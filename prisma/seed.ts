@@ -1,17 +1,20 @@
 console.log("About to import PrismaClient");
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
   // Create test user
-  const hashedPassword = await bcrypt.hash('password123', 12)
-
-  const testUser = await prisma.user.create({
-    data: {
+  const testUser = await prisma.user.upsert({
+    where: { email: 'test@example.com' },
+    update: {
+      name: 'Test User',
+      // password: hashedPassword, // Uncomment if you add password to schema
+    },
+    create: {
       email: 'test@example.com',
       name: 'Test User',
+      // password: hashedPassword, // Uncomment if you add password to schema
     },
   })
 

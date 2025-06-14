@@ -1,0 +1,623 @@
+                    <span className="text-xs font-medium text-blue-600">
+                      {person.firstName.charAt(0)}{person.lastName?.charAt(0) || ''}
+                    </span>
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {person.firstName} {person.lastName}
+                  </p>
+                  {person.birthDate && (
+                    <p className="text-xs text-gray-500">
+                      Born {person.birthDate.getFullYear()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-0">
+        {/* Top Bar */}
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden text-gray-600 hover:text-gray-900"
+              >
+                <Menu size={24} />
+              </button>
+              <h1 className="text-xl font-semibold text-gray-900 flex items-center">
+                <TreePine size={24} className="mr-2 text-blue-600" />
+                My Family Tree
+              </h1>
+            </div>
+            
+            <div className="text-sm text-gray-500">
+              {persons.length} {persons.length === 1 ? 'member' : 'members'}
+            </div>
+          </div>
+        </div>
+
+        {/* Family Tree Container */}
+        <div className="h-[calc(100vh-5rem)]">
+          <FamilyTree
+            persons={persons}
+            onAddPerson={handleAddPerson}
+            onEditPerson={handleEditPerson}
+            onViewProfile={handleViewProfile}
+          />
+        </div>
+      </div>
+
+      {/* Modals */}
+      <PersonModal
+        isOpen={isPersonModalOpen}
+        onClose={() => setIsPersonModalOpen(false)}
+        onSave={handleSavePerson}
+        person={editingPerson}
+        title={editingPerson ? 'Edit Person' : 'Add New Person'}
+      />
+
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        person={viewingPerson}
+        onEdit={() => {
+          if (viewingPerson) {
+            handleEditPerson(viewingPerson)
+          }
+        }}
+      />
+    </div>
+  )
+}
+```
+
+### Day 5: Mobile Controls & Touch Gestures
+
+#### 7. Mobile-Optimized Family Tree Component (`components/family-tree/FamilyTree.tsx`)
+```typescript
+'use client'
+
+import React, { useCallback, useEffect, useState } from 'react'
+import ReactFlow, {
+  Node,
+  Edge,
+  addEdge,
+  Connection,
+  useNodesState,
+  useEdgesState,
+  Controls,
+  Background,
+  BackgroundVariant,
+  Panel,
+  MiniMap,
+} from 'reactflow'
+import 'reactflow/dist/style.css'
+import { Person } from '@prisma/client'
+import PersonNode from './PersonNode'
+import { ZoomIn, ZoomOut, Maximize, RotateCcw } from 'lucide-react'
+
+const nodeTypes = {
+  person: PersonNode,
+}
+
+interface FamilyTreeProps {
+  persons: Person[]
+  onAddPerson: (parentId?: string) => void
+  onEditPerson: (person: Person) => void
+  onViewProfile: (person: Person) => void
+}
+
+export default function FamilyTree({
+  persons,
+  onAddPerson,
+  onEditPerson,
+  onViewProfile,
+}: FamilyTreeProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Generate nodes and edges from persons data
+  useEffect(() => {
+    if (persons.length === 0) return
+
+    const newNodes: Node[] = []
+    const newEdges: Edge[] = []
+    const nodePositions: { [key: string]: { x: number; y: number } } = {}
+
+    // Create a map of generations
+    const generations: { [key: number]: Person[] } = {}
+    const personLevels: { [key: string]: number } = {}
+
+    // Calculate generations (simplified - assumes proper parent-child relationships)
+    const calculateLevel = (person: Person, visited = new Set()): number => {
+      if (visited.has(person.id)) return 0
+      visited.add(person.id)
+      
+      if (!person.parentId) return 0
+      
+      const parent = persons.find(p => p.id === person.parentId)
+      if (!parent) return 0
+      
+      return calculateLevel(parent, visited) + 1
+    }
+
+    persons.forEach(person => {
+      const level = calculateLevel(person)
+      personLevels[person.id] = level
+      
+      if (!generations[level]) {
+        generations[level] = []
+      }
+      generations[level].push(person)
+    })
+
+    // Position nodes by generation
+    Object.keys(generations).forEach(levelStr => {
+      const level = parseInt(levelStr)
+      const personsInLevel = generations[level]
+      const levelWidth = personsInLevel.length * 200
+      const startX = -levelWidth / 2
+
+      personsInLevel.forEach((person, index) => {
+        const x = startX + (index * 200) + 100
+        const y = level * 150
+        
+        nodePositions[person.id] = { x, y }
+        
+        newNodes.push({
+          id: person.id,
+          type: 'person',
+          position: { x, y },
+          data: {
+            person,
+            onEdit: () => onEditPerson(person),
+            onAddChild: () => onAddPerson(person.id),
+            onViewProfile: () => onViewProfile(person),
+          },
+        })
+
+        // Create edges for parent-child relationships
+        if (person.parentId) {
+          newEdges.push({
+            id: `${person.parentId}-${person.id}`,
+            source: person.parentId,
+            target: person.id,
+            type: 'smoothstep',
+            style: { 
+              stroke: '#3b82f6', 
+              strokeWidth: 2,
+            },
+            markerEnd: {
+              type: 'arrowclosed',
+              color: '#3b82f6',
+            }
+          })
+        }
+      })
+    })
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+  }, [persons, onEditPerson, onAddPerson, onViewProfile])
+
+  const onConnect = useCallback(
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    [setEdges]
+  )
+
+  const handleFitView = () => {
+    if (reactFlowInstance) {
+      reactFlowInstance.fitView({ padding: 0.2 })
+    }
+  }
+
+  const handleZoomIn = () => {
+    if (reactFlowInstance) {
+      reactFlowInstance.zoomIn()
+    }
+  }
+
+  const handleZoomOut = () => {
+    if (reactFlowInstance) {
+      reactFlowInstance.zoomOut()
+    }
+  }
+
+  const handleResetView = () => {
+    if (reactFlowInstance) {
+      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 1 })
+    }
+  }
+
+  return (
+    <div className="w-full h-full relative">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onInit={setReactFlowInstance}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.1}
+        maxZoom={2}
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          style: { stroke: '#3b82f6', strokeWidth: 2 },
+        }}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background 
+          variant={BackgroundVariant.Dots} 
+          gap={20} 
+          size={1} 
+          color="#e5e7eb"
+        />
+        
+        {/* Desktop Controls */}
+        {!isMobile && (
+          <>
+            <Controls 
+              position="bottom-right"
+              showInteractive={false}
+            />
+            <MiniMap 
+              position="bottom-left"
+              nodeColor={(node) => node.data.person.deathDate ? '#9ca3af' : '#3b82f6'}
+              maskColor="rgb(240, 242, 247, 0.7)"
+              pannable
+              zoomable
+            />
+          </>
+        )}
+
+        {/* Mobile Controls Panel */}
+        {isMobile && (
+          <Panel position="bottom-center">
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex space-x-2">
+              <button
+                onClick={handleZoomOut}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                title="Zoom out"
+              >
+                <ZoomOut size={20} />
+              </button>
+              <button
+                onClick={handleZoomIn}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                title="Zoom in"
+              >
+                <ZoomIn size={20} />
+              </button>
+              <button
+                onClick={handleFitView}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                title="Fit view"
+              >
+                <Maximize size={20} />
+              </button>
+              <button
+                onClick={handleResetView}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                title="Reset view"
+              >
+                <RotateCcw size={20} />
+              </button>
+            </div>
+          </Panel>
+        )}
+
+        {/* Empty State */}
+        {persons.length === 0 && (
+          <Panel position="center">
+            <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-sm">
+              <div className="text-gray-400 mb-4">
+                <TreePine size={48} className="mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Start Your Family Tree
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Add your first family member to begin building your tree.
+              </p>
+              <button
+                onClick={() => onAddPerson()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Add First Person
+              </button>
+            </div>
+          </Panel>
+        )}
+      </ReactFlow>
+    </div>
+  )
+}
+```
+
+### Day 6: Database Schema Updates
+
+#### 8. Enhanced Database Schema (`prisma/schema.prisma`)
+```prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  persons       Person[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Person {
+  id          String    @id @default(cuid())
+  firstName   String
+  lastName    String?
+  birthDate   DateTime?
+  deathDate   DateTime?
+  gender      String?
+  photoPath   String?
+  notes       String?
+  
+  // Relationships
+  parentId    String?
+  parent      Person?   @relation("ParentChild", fields: [parentId], references: [id])
+  children    Person[]  @relation("ParentChild")
+  
+  // User ownership
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([parentId])
+}
+```
+
+### Day 7: API Routes Enhancement
+
+#### 9. Enhanced Person API Route (`app/api/persons/[id]/route.ts`)
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const person = await prisma.person.findFirst({
+      where: {
+        id: params.id,
+        user: {
+          email: session.user.email
+        }
+      },
+      include: {
+        children: true,
+        parent: true,
+      }
+    })
+
+    if (!person) {
+      return NextResponse.json({ error: 'Person not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(person)
+  } catch (error) {
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const body = await request.json()
+    const { firstName, lastName, birthDate, deathDate, gender, notes, photoPath } = body
+
+    // Verify ownership
+    const existingPerson = await prisma.person.findFirst({
+      where: {
+        id: params.id,
+        user: {
+          email: session.user.email
+        }
+      }
+    })
+
+    if (!existingPerson) {
+      return NextResponse.json({ error: 'Person not found' }, { status: 404 })
+    }
+
+    const updatedPerson = await prisma.person.update({
+      where: { id: params.id },
+      data: {
+        firstName,
+        lastName,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        deathDate: deathDate ? new Date(deathDate) : null,
+        gender,
+        notes,
+        photoPath,
+        updatedAt: new Date(),
+      },
+    })
+
+    return NextResponse.json(updatedPerson)
+  } catch (error) {
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession()
+  
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    // Verify ownership
+    const existingPerson = await prisma.person.findFirst({
+      where: {
+        id: params.id,
+        user: {
+          email: session.user.email
+        }
+      },
+      include: {
+        children: true
+      }
+    })
+
+    if (!existingPerson) {
+      return NextResponse.json({ error: 'Person not found' }, { status: 404 })
+    }
+
+    // Check if person has children
+    if (existingPerson.children.length > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete person with children. Please reassign or remove children first.' 
+      }, { status: 400 })
+    }
+
+    await prisma.person.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ message: 'Person deleted successfully' })
+  } catch (error) {
+    console.error('Database error:', error)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+}
+```
+
+## Week 3 Summary
+
+### What You've Accomplished
+- ✅ **Photo Upload System**: Complete file upload with image optimization
+- ✅ **Enhanced UI Components**: Modern, responsive design with Tailwind
+- ✅ **Profile Management**: Detailed member profiles with modal views
+- ✅ **Mobile Optimization**: Touch-friendly controls and responsive layout
+- ✅ **Improved Database**: Enhanced schema with proper relationships
+- ✅ **Better API Design**: Comprehensive CRUD operations with validation
+
+### Key Features Added
+1. **Photo Uploads**: Local file storage with image optimization using Sharp
+2. **Modern UI**: Gradient backgrounds, hover effects, and smooth animations
+3. **Member Profiles**: Detailed view with timeline and notes
+4. **Mobile Support**: Touch gestures, mobile controls, and responsive sidebar
+5. **Enhanced Nodes**: Profile pictures, status indicators, and action buttons
+
+### Technical Improvements
+- Image optimization and thumbnails
+- Responsive design patterns
+- Touch-friendly mobile interface
+- Better error handling
+- Enhanced API validation
+- Improved database relationships
+
+### Next Steps for Week 4
+- Bug fixes and testing
+- Export functionality
+- Performance optimization
+- Documentation
+- Demo preparation
+
+Your family tree app now has a polished, professional appearance with photo support and excellent mobile experience!

@@ -51,7 +51,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.error('Registration error:', error)
+    // Enhanced error logging for debugging
+    console.error('Registration error:', error instanceof Error ? error.message : error);
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+    }
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

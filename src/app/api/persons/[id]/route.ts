@@ -1,71 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { prisma } from '@/lib/prisma'
-import { Gender } from '@prisma/client'
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/getSessionUser";
+import { mapPersonData } from "@/lib/mapPersonData";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession()
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    // Await the params to get the id
-    const { id } = await Promise.resolve(params)
-    const data = await request.json()
+    const { id } = params;
+    const data = await request.json();
 
     const existingPerson = await prisma.person.findFirst({
       where: {
-        id: id,
+        id,
         createdById: user.id,
       },
-    })
+    });
 
     if (!existingPerson) {
       return NextResponse.json(
-        { error: 'Person not found or unauthorized' },
+        { error: "Person not found or unauthorized" },
         { status: 404 }
-      )
+      );
     }
 
-    // Convert gender string to enum
-    const gender = data.gender ? data.gender.toUpperCase() as Gender : null
-
-    // Prepare update data with correct field names
-    const updateData = {
-      firstName: data.firstName,
-      lastName: data.lastName || null,
-      birthDate: data.birthDate ? new Date(data.birthDate) : null,
-      deathDate: data.deathDate ? new Date(data.deathDate) : null,
-      gender,
-      biography: data.notes || null,
-      photoPath: data.photoPath || null,
-    }
+    const updateData = mapPersonData(data);
 
     const person = await prisma.person.update({
-      where: { id: id },
+      where: { id },
       data: updateData,
-    })
+    });
 
-    return NextResponse.json(person)
+    return NextResponse.json(person);
   } catch (error) {
-    console.error('Error updating person:', error)
+    console.error("[PUT /api/persons/:id]", error);
     return NextResponse.json(
-      { error: 'Failed to update person' },
+      { error: "Failed to update person" },
       { status: 500 }
-    )
+    );
   }
 }
 
@@ -73,58 +51,42 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession()
-
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
-
-    const { id } = params
+    const { id } = params;
 
     const existingPerson = await prisma.person.findFirst({
       where: {
-        id: id,
+        id,
         createdById: user.id,
       },
-    })
+    });
 
     if (!existingPerson) {
       return NextResponse.json(
-        { error: 'Person not found or unauthorized' },
+        { error: "Person not found or unauthorized" },
         { status: 404 }
-      )
+      );
     }
 
-    // Delete all relationships first
     await prisma.relationship.deleteMany({
       where: {
-        OR: [
-          { personOneId: id },
-          { personTwoId: id }
-        ]
-      }
-    })
+        OR: [{ personOneId: id }, { personTwoId: id }],
+      },
+    });
 
-    // Then delete the person
-    await prisma.person.delete({
-      where: { id: id }
-    })
+    await prisma.person.delete({ where: { id } });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting person:', error)
+    console.error("[DELETE /api/persons/:id]", error);
     return NextResponse.json(
-      { error: 'Failed to delete person' },
+      { error: "Failed to delete person" },
       { status: 500 }
-    )
+    );
   }
 }

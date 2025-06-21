@@ -1,64 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-import sharp from 'sharp'
-import { getServerSession } from 'next-auth'
+import { NextRequest, NextResponse } from 'next/server';
+import { writeFile, mkdir } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const data = await request.formData()
-    const file: File | null = data.get('photo') as unknown as File
+    const data = await request.formData();
+    const file = data.get('photo');
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: 'Invalid or missing file' }, { status: 400 });
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+      return NextResponse.json({ error: 'Only image files are allowed' }, { status: 400 });
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'upload')
+    const uploadsDir = path.join(process.cwd(), 'public', 'upload');
     if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
+      await mkdir(uploadsDir, { recursive: true });
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
-    const filename = `${timestamp}.${extension}`
-    const filepath = path.join(uploadsDir, filename)
+    const timestamp = Date.now();
+    const extension = file.name.split('.').pop() || 'jpg';
+    const safeExtension = extension.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const filename = `${timestamp}.${safeExtension}`;
+    const filepath = path.join(uploadsDir, filename);
 
-    // Convert file to buffer and optimize
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    // Resize and optimize image
     const optimizedBuffer = await sharp(buffer)
       .resize(200, 200, {
         fit: 'cover',
-        position: 'center'
+        position: 'center',
       })
-      .jpeg({ quality: 80 })
-      .toBuffer()
+      .toFormat('jpeg', { quality: 80 })
+      .toBuffer();
 
-    // Save optimized image
-    await writeFile(filepath, optimizedBuffer)
+    await writeFile(filepath, optimizedBuffer);
 
     return NextResponse.json({
       filename,
-      url: `/upload/${filename}`
-    })
+      url: `/upload/${filename}`,
+    });
   } catch (error) {
-    console.error('Upload error:', error)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

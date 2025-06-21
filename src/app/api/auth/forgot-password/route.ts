@@ -1,51 +1,54 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { randomBytes } from "crypto";
 import nodemailer from "nodemailer";
 
-const prisma = new PrismaClient();
-
 export async function POST(req: Request) {
-  const { email } = await req.json();
-  if (!email) {
-    return NextResponse.json({ error: "Email is required." }, { status: 400 });
-  }
+  try {
+    const { email } = await req.json();
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    // For security, don't reveal if user exists
+    if (!email || typeof email !== "string") {
+      return NextResponse.json({ error: "Email is required." }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Prevent email enumeration
+    if (!user) return NextResponse.json({ success: true });
+
+    const resetToken = randomBytes(32).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { email },
+      data: { resetToken, resetTokenExpiry },
+    });
+
+    const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_SERVER_USER,
+        pass: process.env.EMAIL_SERVER_PASSWORD,
+      },
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: "Reset your password",
+      html: `
+        <p>You requested a password reset for your account.</p>
+        <p>Click the link below to reset your password:</p>
+        <p><a href="${resetUrl}" style="color: #3b82f6; text-decoration: underline;">Reset your password</a></p>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
+    });
+
     return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return NextResponse.json({ error: "An error occurred." }, { status: 500 });
   }
-
-  // Generate a reset token and expiry (1 hour)
-  const resetToken = randomBytes(32).toString("hex");
-  const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
-
-  await prisma.user.update({
-    where: { email },
-    data: { resetToken, resetTokenExpiry },
-  });
-
-  // Create nodemailer transporter
-  const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT),
-    secure: Number(process.env.EMAIL_PORT) === 465, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  // Send email with reset link
-  const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/auth/reset-password?token=${resetToken}`;
-
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: "Reset your password",
-    html: `<p>Click the link below to reset your password:</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>If you did not request this, you can ignore this email.</p>`,
-  });
-
-  return NextResponse.json({ success: true });
 }

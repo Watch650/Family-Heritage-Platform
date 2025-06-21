@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -11,9 +13,10 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
     if (!token) {
       setError("Invalid or missing token.");
       return;
@@ -26,19 +29,31 @@ export default function ResetPasswordPage() {
       setError("Passwords do not match.");
       return;
     }
+
     setLoading(true);
-    const res = await fetch("/api/auth/reset-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, password }),
-    });
-    setLoading(false);
-    if (res.ok) {
+
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
+      });
+
+      if (!res.ok) {
+        const data: { error?: string } = await res.json();
+        throw new Error(data.error || "Something went wrong.");
+      }
+
       setSuccess(true);
       setTimeout(() => router.push("/auth/signin"), 2000);
-    } else {
-      const data = await res.json();
-      setError(data.error || "Something went wrong.");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Unexpected error occurred.");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 

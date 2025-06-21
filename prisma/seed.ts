@@ -1,24 +1,19 @@
-console.log("About to import PrismaClient");
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 async function main() {
-  // Create test user
-  const testUser = await prisma.user.upsert({
-    where: { email: 'test@example.com' },
-    update: {
-      name: 'Test User',
-      // password: hashedPassword, // Uncomment if you add password to schema
-    },
-    create: {
+  const hashedPassword = await bcrypt.hash('password123', 12);
+
+  const testUser = await prisma.user.create({
+    data: {
       email: 'test@example.com',
       name: 'Test User',
-      // password: hashedPassword, // Uncomment if you add password to schema
+      password: hashedPassword,
     },
-  })
+  });
 
-  // Create sample family members
   const grandpa = await prisma.person.create({
     data: {
       firstName: 'John',
@@ -27,9 +22,10 @@ async function main() {
       gender: 'MALE',
       birthPlace: 'New York, USA',
       biography: 'Family patriarch, served in the military.',
+      isAlive: true,
       createdById: testUser.id,
     },
-  })
+  });
 
   const grandma = await prisma.person.create({
     data: {
@@ -39,9 +35,10 @@ async function main() {
       gender: 'FEMALE',
       birthPlace: 'Boston, USA',
       biography: 'Beloved grandmother, worked as a teacher.',
+      isAlive: true,
       createdById: testUser.id,
     },
-  })
+  });
 
   const father = await prisma.person.create({
     data: {
@@ -50,35 +47,43 @@ async function main() {
       birthDate: new Date('1970-07-10'),
       gender: 'MALE',
       birthPlace: 'Chicago, USA',
+      isAlive: true,
       createdById: testUser.id,
     },
-  })
-
-  // Create relationships
-  await prisma.relationship.create({
-    data: {
-      type: 'BIOLOGICAL_PARENT',
-      parentId: grandpa.id,
-      childId: father.id,
-    },
-  })
+  });
 
   await prisma.relationship.create({
     data: {
-      type: 'BIOLOGICAL_PARENT',
-      parentId: grandma.id,
-      childId: father.id,
+      type: 'PARENT',
+      personOneId: grandpa.id,
+      personTwoId: father.id,
     },
-  })
+  });
 
-  console.log('Database seeded successfully!')
+  await prisma.relationship.create({
+    data: {
+      type: 'PARENT',
+      personOneId: grandma.id,
+      personTwoId: father.id,
+    },
+  });
+
+  await prisma.relationship.create({
+    data: {
+      type: 'MARRIED',
+      personOneId: grandpa.id,
+      personTwoId: grandma.id,
+    },
+  });
+
+  console.log('Database seeded successfully!');
 }
 
 main()
   .catch((e) => {
-    console.error(e)
-    process.exit(1)
+    console.error('Seeding error:', e);
+    process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect()
-  })
+    await prisma.$disconnect();
+  });

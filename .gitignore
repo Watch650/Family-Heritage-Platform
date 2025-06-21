@@ -45,8 +45,8 @@ next-env.d.ts
 .env
 
 # Uploads
-public/uploads/*
-!public/uploads/.gitkeep
+public/upload/*
+!public/upload/.gitkeep
 
 # Database
 prisma/dev.db

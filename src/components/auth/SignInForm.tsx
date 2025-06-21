@@ -5,11 +5,13 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { z } from "zod";
 
 const signInSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
+  remember: z.boolean().optional(),
 });
 
 type SignInFormData = z.infer<typeof signInSchema>;
@@ -25,6 +27,7 @@ export default function SignInForm() {
     formState: { errors },
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
+    defaultValues: { remember: false },
   });
 
   const onSubmit = async (data: SignInFormData) => {
@@ -35,6 +38,7 @@ export default function SignInForm() {
       const result = await signIn("credentials", {
         email: data.email,
         password: data.password,
+        remember: data.remember ? "true" : "false",
         redirect: false,
       });
 
@@ -64,7 +68,7 @@ export default function SignInForm() {
           <input
             {...register("email")}
             type="email"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
           {errors.email && (
             <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
@@ -81,13 +85,32 @@ export default function SignInForm() {
           <input
             {...register("password")}
             type="password"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block text-gray-700 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
           {errors.password && (
             <p className="mt-1 text-sm text-red-600">
               {errors.password.message}
             </p>
           )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              {...register("remember")}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <span className="ml-2 block text-sm text-gray-900">
+              Remember me
+            </span>
+          </label>
+          <Link
+            href="/auth/forgot-password"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          >
+            Forgot your password?
+          </Link>
         </div>
 
         {error && (

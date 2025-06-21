@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Person, Relationship } from "@prisma/client";
+import { Person } from "@prisma/client";
 import FamilyTree from "@/components/family-tree/FamilyTree";
 import PersonModal from "@/components/forms/PersonModal";
 import ProfileModal from "@/components/profiles/ProfileModal";
@@ -19,9 +19,9 @@ import {
 import Image from "next/image";
 import { ReactFlowInstance } from "react-flow-renderer";
 
-interface PersonWithRelationships extends Person {
-  parentRelationships: Relationship[];
-}
+import type { PersonWithRelationships as FamilyPersonWithRelationships } from "@/types/family";
+
+type PersonWithRelationships = FamilyPersonWithRelationships;
 
 interface PersonFormData {
   firstName: string;
@@ -212,7 +212,7 @@ export default function Dashboard() {
                   {person.photoPath ? (
                     <div className="relative w-8 h-8">
                       <Image
-                        src={`/uploads/${person.photoPath}`}
+                        src={`/upload/${person.photoPath}`}
                         alt={person.firstName}
                         fill
                         className="rounded-full object-cover"

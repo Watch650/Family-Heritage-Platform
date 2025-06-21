@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
     const relationships = await prisma.relationship.findMany({
       where: {
         OR: [
-          { parentId: personId },
-          { childId: personId }
+          { personOneId: personId },
+          { personTwoId: personId }
         ]
       }
     })

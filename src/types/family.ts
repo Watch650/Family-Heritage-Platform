@@ -17,7 +17,8 @@ export type PersonFormData = z.infer<typeof personSchema>;
 
 // Extended person type with relationships
 export interface PersonWithRelationships extends Person {
-  parentRelationships: Relationship[];
+  relationshipsAsOne: Relationship[];
+  relationshipsAsTwo: Relationship[];
 }
 
 // Props for PersonModal component

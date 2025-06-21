@@ -23,7 +23,8 @@ export async function GET() {
     const persons = await prisma.person.findMany({
       where: { createdById: user.id },
       include: {
-        parentRelationships: true
+        relationshipsAsOne: true,
+        relationshipsAsTwo: true
       },
       orderBy: { createdAt: 'asc' }
     })

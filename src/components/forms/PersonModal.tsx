@@ -16,7 +16,7 @@ export default function PersonModal({
 }: PersonModalProps) {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(
-    person?.photoPath ? `/uploads/${person.photoPath}` : null
+    person?.photoPath ? `/upload/${person.photoPath}` : null
   );
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +24,7 @@ export default function PersonModal({
   // Update photoPreview when person changes
   React.useEffect(() => {
     if (person?.photoPath) {
-      setPhotoPreview(`/uploads/${person.photoPath}`);
+      setPhotoPreview(`/upload/${person.photoPath}`);
     } else {
       setPhotoPreview(null);
     }

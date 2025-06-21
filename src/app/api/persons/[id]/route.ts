@@ -108,8 +108,8 @@ export async function DELETE(
     await prisma.relationship.deleteMany({
       where: {
         OR: [
-          { parentId: id },
-          { childId: id }
+          { personOneId: id },
+          { personTwoId: id }
         ]
       }
     })

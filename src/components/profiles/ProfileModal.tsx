@@ -65,7 +65,7 @@ export default function ProfileModal({
               {person.photoPath ? (
                 <div className="relative w-24 h-24">
                   <Image
-                    src={`/uploads/${person.photoPath}`}
+                    src={`/upload/${person.photoPath}`}
                     alt={person.firstName}
                     fill
                     className="rounded-full object-cover border-4 border-white shadow-lg"
@@ -104,7 +104,7 @@ export default function ProfileModal({
         <div className="p-6">
           {/* Life Dates */}
           <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-3 flex items-center">
+            <h2 className="text-xl text-black font-semibold mb-3 flex items-center">
               <Calendar className="mr-2 text-blue-600" size={20} />
               Life Timeline
             </h2>
@@ -161,7 +161,7 @@ export default function ProfileModal({
           {/* Biography */}
           {person.biography && (
             <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-3 flex items-center">
+              <h2 className="text-xl text-black font-semibold mb-3 flex items-center">
                 <FileText className="mr-2 text-green-600" size={20} />
                 Biography
               </h2>

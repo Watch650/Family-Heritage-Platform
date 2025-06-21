@@ -2,12 +2,12 @@
 
 import React from "react";
 import { Handle, Position } from "reactflow";
-import { Edit, Plus, User, Calendar, Heart, Trash2 } from "lucide-react";
+import { User, Calendar, Heart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { PersonNodeProps } from "@/types/family";
 
 const PersonNode = ({ data }: PersonNodeProps) => {
-  const { person, onEdit, onAddChild, onViewProfile, onDelete } = data;
+  const { person, onViewProfile, onDelete } = data;
 
   const calculateAge = (birthDate: Date | null, deathDate?: Date | null) => {
     if (!birthDate) return null;
@@ -55,7 +55,7 @@ const PersonNode = ({ data }: PersonNodeProps) => {
             {person.photoPath ? (
               <div className="relative w-16 h-16">
                 <Image
-                  src={`/uploads/${person.photoPath}`}
+                  src={`/upload/${person.photoPath}`}
                   alt={person.firstName}
                   fill
                   className="rounded-full object-cover border-3 border-white shadow-md"
@@ -88,7 +88,7 @@ const PersonNode = ({ data }: PersonNodeProps) => {
           <div className="text-center">
             <h3
               className={`font-semibold text-sm leading-tight ${
-                isDeceased ? "text-gray-700" : "text-gray-900"
+                isDeceased ? "text-gray-500" : "text-gray-700"
               }`}
             >
               {person.firstName}
@@ -129,20 +129,6 @@ const PersonNode = ({ data }: PersonNodeProps) => {
             title="View profile"
           >
             <User size={14} />
-          </button>
-          <button
-            onClick={onEdit}
-            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-full transition-colors"
-            title="Edit person"
-          >
-            <Edit size={14} />
-          </button>
-          <button
-            onClick={onAddChild}
-            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-colors"
-            title="Add child"
-          >
-            <Plus size={14} />
           </button>
           <button
             onClick={onDelete}

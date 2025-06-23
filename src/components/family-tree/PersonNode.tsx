@@ -5,41 +5,16 @@ import { Handle, Position } from "reactflow";
 import { User, Calendar, Heart, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { PersonNodeProps } from "@/types/family";
+import { calculateAge, formatDateRange } from "@/utils/dateUtils";
 
 const PersonNode = ({ data }: PersonNodeProps) => {
   const { person, onViewProfile, onDelete } = data;
-
-  const calculateAge = (birthDate: Date | null, deathDate?: Date | null) => {
-    if (!birthDate) return null;
-    const birth = new Date(birthDate);
-    const endDate = deathDate ? new Date(deathDate) : new Date();
-    const age = endDate.getFullYear() - birth.getFullYear();
-    return age;
-  };
-
-  const formatDateRange = (birthDate: Date | null, deathDate: Date | null) => {
-    const birthYear = birthDate ? new Date(birthDate).getFullYear() : "?";
-    const deathYear = deathDate
-      ? new Date(deathDate).getFullYear()
-      : birthDate
-      ? "present"
-      : "?";
-    return `${birthYear} - ${deathYear}`;
-  };
 
   const age = calculateAge(person.birthDate, person.deathDate);
   const isDeceased = !!person.deathDate;
 
   return (
     <div className="relative group">
-      {/* Input handle (for parent connections) */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
-        style={{ top: -8 }}
-      />
-
       {/* Node content */}
       <div
         className={`bg-white border-2 rounded-xl p-4 min-w-[180px] shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-1 ${
@@ -58,12 +33,12 @@ const PersonNode = ({ data }: PersonNodeProps) => {
                   src={`/upload/${person.photoPath}`}
                   alt={person.firstName}
                   fill
-                  className="rounded-full object-cover border-3 border-white shadow-md"
+                  className="rounded-full object-cover rounded-full border-2 border-white shadow-md"
                 />
               </div>
             ) : (
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center border-3 border-white shadow-md ${
+                className={`w-16 h-16 flex items-center justify-center rounded-full border-2 border-white shadow-md ${
                   isDeceased
                     ? "bg-gray-200"
                     : "bg-gradient-to-br from-blue-100 to-purple-100"
@@ -140,12 +115,40 @@ const PersonNode = ({ data }: PersonNodeProps) => {
         </div>
       </div>
 
-      {/* Output handle (for child connections) */}
+      {/* Top handle (for parent connections) */}
       <Handle
+        id="parent-target"
+        type="target"
+        position={Position.Top}
+        className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
+        style={{ top: -8 }}
+      />
+
+      {/* Bottom handle (for child connections) */}
+      <Handle
+        id="child-source"
         type="source"
         position={Position.Bottom}
         className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
         style={{ bottom: -8 }}
+      />
+
+      {/* Left Handle for MARRIED source */}
+      <Handle
+        id="married-left"
+        type="source"
+        position={Position.Left}
+        className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 transition-colors"
+        style={{ left: -8 }}
+      />
+
+      {/* Right Handle for MARRIED target */}
+      <Handle
+        id="married-right"
+        type="target"
+        position={Position.Right}
+        className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 transition-colors"
+        style={{ right: -8 }}
       />
     </div>
   );

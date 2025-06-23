@@ -3,31 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { mapPersonData } from "@/lib/mapPersonData";
 
+// PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const id = context.params.id;
+
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { id } = params;
     const data = await request.json();
 
     const existingPerson = await prisma.person.findFirst({
-      where: {
-        id,
-        createdById: user.id,
-      },
+      where: { id, createdById: user.id },
     });
 
     if (!existingPerson) {
-      return NextResponse.json(
-        { error: "Person not found or unauthorized" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Person not found or unauthorized" }, { status: 404 });
     }
 
     const updateData = mapPersonData(data);
@@ -40,25 +36,23 @@ export async function PUT(
     return NextResponse.json(person);
   } catch (error) {
     console.error("[PUT /api/persons/:id]", error);
-    return NextResponse.json(
-      { error: "Failed to update person" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update person" }, { status: 500 });
   }
 }
 
+// DELETE /api/persons/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const id = context.params.id;
+
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { id } = params;
-
     const existingPerson = await prisma.person.findFirst({
       where: {
         id,

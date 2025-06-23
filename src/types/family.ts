@@ -2,7 +2,10 @@ import { Person, Relationship } from "@prisma/client";
 import { z } from "zod";
 import { ReactFlowInstance } from "reactflow";
 
-// Schema for person form data
+// ----------------------
+// Zod Schema
+// ----------------------
+
 export const personSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().optional(),
@@ -12,25 +15,35 @@ export const personSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Type for person form data
+// ----------------------
+// Derived Types
+// ----------------------
+
 export type PersonFormData = z.infer<typeof personSchema>;
 
-// Extended person type with relationships
+// Person with related relationships
 export interface PersonWithRelationships extends Person {
   relationshipsAsOne: Relationship[];
   relationshipsAsTwo: Relationship[];
 }
 
-// Props for PersonModal component
+// Person data extended with photo
+export type PersonWithPhoto = PersonFormData & { photoPath?: string };
+
+// ----------------------
+// Component Props
+// ----------------------
+
+// Person modal (add/edit)
 export interface PersonModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: PersonFormData & { photoPath?: string }) => void;
+  onSave: (data: PersonWithPhoto) => void;
   person?: Person | null;
   title: string;
 }
 
-// Props for PersonNode component
+// Custom node in ReactFlow
 export interface PersonNodeProps {
   data: {
     person: Person;
@@ -41,7 +54,7 @@ export interface PersonNodeProps {
   };
 }
 
-// Props for FamilyTree component
+// Family tree diagram component
 export interface FamilyTreeProps {
   persons: PersonWithRelationships[];
   onAddPerson: (parentId?: string) => void;
@@ -49,9 +62,10 @@ export interface FamilyTreeProps {
   onViewProfile: (person: Person) => void;
   onDeletePerson: (person: Person) => void;
   onInit?: (instance: ReactFlowInstance) => void;
+  onReloadPersons?: () => void;
 }
 
-// Props for ProfileModal component
+// Profile modal (view-only)
 export interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;

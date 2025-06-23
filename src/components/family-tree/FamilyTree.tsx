@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import ReactFlow, {
-  Node,
   Edge,
   addEdge,
   Connection,
@@ -17,42 +16,23 @@ import ReactFlow, {
   ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Person } from "@prisma/client";
-import PersonNode from "./PersonNode";
 import {
   ZoomIn,
   ZoomOut,
   Maximize,
   RotateCcw,
-  TreePine,
   Save,
+  Trash2,
 } from "lucide-react";
+
+import { RelationshipType } from "@prisma/client";
+import { useResponsive } from "@/hooks/useResponsive";
+import { generateLayout } from "@/lib/generateLayout";
 import { FamilyTreeProps } from "@/types/family";
+import { loadLayout, saveLayout } from "@/utils/LayoutStorage";
+import PersonNode from "./PersonNode";
 
-// Extend Person type to include parentId
-interface PersonWithParent extends Person {
-  parentId?: string | null;
-}
-
-interface SavedNode {
-  id: string;
-  position: { x: number; y: number };
-}
-
-interface SavedEdge {
-  id: string;
-  source: string;
-  target: string;
-}
-
-interface SavedLayout {
-  nodes: SavedNode[];
-  edges: SavedEdge[];
-}
-
-const nodeTypes = {
-  person: PersonNode,
-};
+const nodeTypes = { person: PersonNode };
 
 export default function FamilyTree({
   persons,
@@ -61,246 +41,197 @@ export default function FamilyTree({
   onViewProfile,
   onDeletePerson,
   onInit,
+  onReloadPersons,
 }: FamilyTreeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [pendingRelationships, setPendingRelationships] = useState<
+    {
+      personOneId: string;
+      personTwoId: string;
+      type: RelationshipType;
+    }[]
+  >([]);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useResponsive();
 
-  // Save both node positions and edges when they change
-  useEffect(() => {
-    if (nodes.length > 0) {
-      const layout: SavedLayout = {
-        nodes: nodes.map((node) => ({
-          id: node.id,
-          position: node.position,
-        })),
-        edges: edges.map((edge) => ({
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-        })),
-      };
-      localStorage.setItem("familyTreeLayout", JSON.stringify(layout));
-    }
-  }, [nodes, edges]);
-
-  // Check if mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Generate nodes and edges from persons data
-  useEffect(() => {
-    if (persons.length === 0) return;
-
-    const savedLayout = JSON.parse(
-      localStorage.getItem("familyTreeLayout") || '{"nodes":[],"edges":[]}'
-    ) as SavedLayout;
-    const newNodes: Node[] = [];
-    const newEdges: Edge[] = [];
-    const nodePositions: { [key: string]: { x: number; y: number } } = {};
-
-    // Create a map of generations
-    const generations: { [key: number]: PersonWithParent[] } = {};
-    const personLevels: { [key: string]: number } = {};
-
-    // Calculate generations (simplified - assumes proper parent-child relationships)
-    const calculateLevel = (
-      person: PersonWithParent,
-      visited = new Set()
-    ): number => {
-      if (visited.has(person.id)) return 0;
-      visited.add(person.id);
-
-      if (!person.parentId) return 0;
-
-      const parent = persons.find((p) => p.id === person.parentId);
-      if (!parent) return 0;
-
-      return calculateLevel(parent, visited) + 1;
-    };
-
-    // First pass: calculate levels and organize by generation
-    persons.forEach((person) => {
-      const level = calculateLevel(person);
-      personLevels[person.id] = level;
-
-      if (!generations[level]) {
-        generations[level] = [];
-      }
-      generations[level].push(person);
+  const memoizedLayout = useMemo(() => {
+    if (persons.length === 0) return { nodes: [], edges: [] };
+    const savedLayout = loadLayout();
+    return generateLayout(persons, savedLayout, {
+      onEditPerson,
+      onAddPerson,
+      onViewProfile,
+      onDeletePerson,
     });
+  }, [persons, onEditPerson, onAddPerson, onViewProfile, onDeletePerson]);
 
-    // Second pass: position nodes and create edges
-    Object.keys(generations).forEach((levelStr) => {
-      const level = parseInt(levelStr);
-      const personsInLevel = generations[level];
-      const levelWidth = personsInLevel.length * 200;
-      const startX = -levelWidth / 2;
-
-      personsInLevel.forEach((person, index) => {
-        // Use saved position if available, otherwise calculate new position
-        const savedNode = savedLayout.nodes.find((n) => n.id === person.id);
-        const x = savedNode ? savedNode.position.x : startX + index * 200 + 100;
-        const y = savedNode ? savedNode.position.y : level * 150;
-
-        nodePositions[person.id] = { x, y };
-
-        newNodes.push({
-          id: person.id,
-          type: "person",
-          position: { x, y },
-          data: {
-            person,
-            onEdit: () => onEditPerson(person),
-            onAddChild: () => onAddPerson(person.id),
-            onViewProfile: () => onViewProfile(person),
-            onDelete: () => onDeletePerson(person),
-          },
-        });
-      });
-    });
-
-    // Create edges from saved layout or default relationships
-    const savedEdges = savedLayout.edges || [];
-    const defaultEdges = persons
-      .filter((person) => person.parentRelationships.length > 0)
-      .map((person) => ({
-        id: `${person.parentRelationships[0].parentId}-${person.id}`,
-        source: person.parentRelationships[0].parentId,
-        target: person.id,
-      }));
-
-    // Use saved edges if they exist, otherwise use default edges
-    const edgesToCreate = savedEdges.length > 0 ? savedEdges : defaultEdges;
-
-    edgesToCreate.forEach((edge: SavedEdge) => {
-      newEdges.push({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        type: "smoothstep",
-        animated: false,
-        style: {
-          stroke: "#3b82f6",
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: "#3b82f6",
-        },
-      });
-    });
-
-    setNodes(newNodes);
-    setEdges(newEdges);
-  }, [
-    persons,
-    onEditPerson,
-    onAddPerson,
-    onViewProfile,
-    onDeletePerson,
-    setNodes,
-    setEdges,
-  ]);
+  useEffect(() => {
+    setNodes(memoizedLayout.nodes);
+    setEdges(memoizedLayout.edges);
+  }, [memoizedLayout, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => {
-      // Only allow connections from parent to child
-      const sourceNode = nodes.find((n) => n.id === params.source);
-      const targetNode = nodes.find((n) => n.id === params.target);
+      if (params.source === params.target) return;
 
-      if (sourceNode && targetNode) {
-        const sourceLevel = sourceNode.position.y;
-        const targetLevel = targetNode.position.y;
+      const handles = [params.sourceHandle, params.targetHandle];
+      const isMarriageConnection =
+        handles.includes("married-left") && handles.includes("married-right");
 
-        // Only allow connections if target is below source
-        if (targetLevel > sourceLevel) {
-          setEdges((eds) =>
-            addEdge(
-              {
-                ...params,
-                type: "smoothstep",
-                animated: false,
-                style: { stroke: "#3b82f6", strokeWidth: 2 },
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                  color: "#3b82f6",
-                },
-              },
-              eds
-            )
-          );
-        }
+      if (isMarriageConnection) {
+        const alreadyExists = edges.some(
+          (e) =>
+            (e.source === params.source && e.target === params.target) ||
+            (e.source === params.target && e.target === params.source)
+        );
+        if (alreadyExists) return;
+
+        const newEdge = {
+          ...params,
+          type: "smoothstep",
+          animated: true,
+          style: {
+            stroke: "#f59e42",
+            strokeWidth: 2,
+            strokeDasharray: "6 3",
+          },
+        };
+
+        setEdges((eds) => addEdge(newEdge, eds));
+        setPendingRelationships((prev) => [
+          ...prev,
+          {
+            type: "MARRIED",
+            personOneId: params.source!,
+            personTwoId: params.target!,
+          },
+        ]);
+        return;
+      }
+
+      const isParentChildConnection =
+        (params.sourceHandle === "child-target" &&
+          params.targetHandle === "parent-source") ||
+        (params.sourceHandle === "parent-source" &&
+          params.targetHandle === "child-target");
+
+      if (isParentChildConnection) {
+        const parentId =
+          params.sourceHandle === "parent-source"
+            ? params.source!
+            : params.target!;
+        const childId =
+          params.sourceHandle === "child-target"
+            ? params.source!
+            : params.target!;
+
+        const newEdge = {
+          id: `parent-${parentId}-${childId}`,
+          source: parentId,
+          target: childId,
+          sourceHandle: "parent-source",
+          targetHandle: "child-target",
+          type: "smoothstep",
+          markerEnd: { type: MarkerType.Arrow, color: "#3b82f6" },
+          style: { stroke: "#3b82f6", strokeWidth: 2 },
+        };
+
+        setEdges((eds) => addEdge(newEdge, eds));
+        setPendingRelationships((prev) => [
+          ...prev,
+          {
+            type: "PARENT",
+            personOneId: parentId,
+            personTwoId: childId,
+          },
+        ]);
       }
     },
-    [nodes, setEdges]
+    [edges, setEdges]
   );
 
-  const handleFitView = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.fitView({ padding: 0.2 });
+  const handleSaveLayout = async () => {
+    if (nodes.length > 0) {
+      saveLayout(nodes, edges);
+
+      for (const rel of pendingRelationships) {
+        try {
+          await fetch("/api/relationships", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(rel),
+          });
+        } catch (err) {
+          console.error("Failed to save relationship:", rel, err);
+        }
+      }
+
+      setPendingRelationships([]);
+
+      const btn = document.getElementById("save-layout-button");
+      if (btn) {
+        const original = btn.innerHTML;
+        btn.innerHTML = "Saved!";
+        btn.classList.add("bg-green-600");
+        setTimeout(() => {
+          btn.innerHTML = original;
+          btn.classList.remove("bg-green-600");
+        }, 2000);
+      }
     }
   };
 
-  const handleZoomIn = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomIn();
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.zoomOut();
-    }
-  };
-
-  const handleResetView = () => {
-    if (reactFlowInstance) {
-      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 1 });
-    }
-  };
-
-  // Update the onInit handler
   const handleInit = (instance: ReactFlowInstance) => {
     setReactFlowInstance(instance);
     onInit?.(instance);
   };
 
-  const handleSaveLayout = () => {
-    if (nodes.length > 0) {
-      const layout = {
-        nodes: nodes.map((node) => ({
-          id: node.id,
-          position: node.position,
-        })),
-        edges: edges.map((edge) => ({
-          id: edge.id,
+  const detectRelationshipType = (edge: Edge): RelationshipType => {
+    if (
+      edge.sourceHandle?.includes("married") ||
+      edge.targetHandle?.includes("married") ||
+      edge.id.startsWith("married")
+    ) {
+      return "MARRIED";
+    }
+    return "PARENT";
+  };
+
+  const handleEdgeDelete = async (edge: Edge) => {
+    const type = detectRelationshipType(edge);
+    setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+    setPendingRelationships((prev) =>
+      prev.filter(
+        (rel) =>
+          !(
+            ((rel.personOneId === edge.source &&
+              rel.personTwoId === edge.target) ||
+              (rel.personOneId === edge.target &&
+                rel.personTwoId === edge.source)) &&
+            rel.type === type
+          )
+      )
+    );
+
+    try {
+      await fetch("/api/relationships", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           source: edge.source,
           target: edge.target,
-        })),
-      };
-      localStorage.setItem("familyTreeLayout", JSON.stringify(layout));
+          type,
+        }),
+      });
 
-      // Show a temporary success message
-      const saveButton = document.getElementById("save-layout-button");
-      if (saveButton) {
-        const originalText = saveButton.innerHTML;
-        saveButton.innerHTML = "Saved!";
-        saveButton.classList.add("bg-green-600");
-        setTimeout(() => {
-          saveButton.innerHTML = originalText;
-          saveButton.classList.remove("bg-green-600");
-        }, 2000);
+      if (onReloadPersons) {
+        onReloadPersons(); // 🔁 refresh relationship data
       }
+    } catch (err) {
+      console.error("Failed to delete relationship:", err);
     }
   };
 
@@ -313,30 +244,55 @@ export default function FamilyTree({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onInit={handleInit}
+        onEdgeClick={(_, edge) => setSelectedEdge(edge)}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2}
-        defaultEdgeOptions={{
-          type: "smoothstep",
-          style: { stroke: "#3b82f6", strokeWidth: 2 },
-        }}
         proOptions={{ hideAttribution: true }}
       >
         <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="#e5e7eb"
+          variant={BackgroundVariant.Cross}
+          gap={30}
+          size={4}
+          color="#ccc"
         />
 
-        {/* Desktop Controls */}
+        {selectedEdge && (
+          <Panel
+            position="top-center"
+            className="!translate-x-[-50%] !translate-y-[-50%] bg-white border shadow rounded px-2 py-1 z-50"
+            style={{
+              left: `calc(${
+                (nodes.find((n) => n.id === selectedEdge.source)?.position?.x ??
+                  0) +
+                ((nodes.find((n) => n.id === selectedEdge.target)?.position
+                  ?.x ?? 0) -
+                  (nodes.find((n) => n.id === selectedEdge.source)?.position
+                    ?.x ?? 0)) /
+                  2
+              }px)`,
+            }}
+          >
+            <button
+              className="text-red-600 hover:text-red-800 flex items-center space-x-1"
+              onClick={() => {
+                handleEdgeDelete(selectedEdge);
+                setSelectedEdge(null);
+              }}
+            >
+              <Trash2 size={16} />
+              <span>Delete</span>
+            </button>
+          </Panel>
+        )}
+
         {!isMobile && (
           <>
-            <Controls position="bottom-right" showInteractive={false} />
+            <Controls position="bottom-left" showInteractive={false} />
             <MiniMap
-              position="bottom-left"
+              position="bottom-right"
               nodeColor={(node) =>
                 node.data.person.deathDate ? "#9ca3af" : "#3b82f6"
               }
@@ -357,67 +313,45 @@ export default function FamilyTree({
           </>
         )}
 
-        {/* Mobile Controls Panel */}
         {isMobile && (
           <Panel position="bottom-left">
             <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex space-x-2">
               <button
-                onClick={handleZoomOut}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={() => reactFlowInstance?.zoomOut()}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                 title="Zoom out"
               >
                 <ZoomOut size={20} />
               </button>
               <button
-                onClick={handleZoomIn}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={() => reactFlowInstance?.zoomIn()}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                 title="Zoom in"
               >
                 <ZoomIn size={20} />
               </button>
               <button
-                onClick={handleFitView}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={() => reactFlowInstance?.fitView({ padding: 0.2 })}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                 title="Fit view"
               >
                 <Maximize size={20} />
               </button>
               <button
-                onClick={handleResetView}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                onClick={() =>
+                  reactFlowInstance?.setViewport({ x: 0, y: 0, zoom: 1 })
+                }
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                 title="Reset view"
               >
                 <RotateCcw size={20} />
               </button>
               <button
                 onClick={handleSaveLayout}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
                 title="Save layout"
               >
                 <Save size={20} />
-              </button>
-            </div>
-          </Panel>
-        )}
-
-        {/* Empty State */}
-        {persons.length === 0 && (
-          <Panel position="top-left">
-            <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-sm">
-              <div className="text-gray-400 mb-4">
-                <TreePine size={48} className="mx-auto" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Start Your Family Tree
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Add your first family member to begin building your tree.
-              </p>
-              <button
-                onClick={() => onAddPerson()}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Add First Person
               </button>
             </div>
           </Panel>

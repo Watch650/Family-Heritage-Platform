@@ -6,22 +6,11 @@ import { Person } from "@prisma/client";
 import FamilyTree from "@/components/family-tree/FamilyTree";
 import PersonModal from "@/components/forms/PersonModal";
 import ProfileModal from "@/components/profiles/ProfileModal";
-import {
-  Plus,
-  Menu,
-  X,
-  Users,
-  TreePine,
-  AlertTriangle,
-  Trash2,
-  User,
-} from "lucide-react";
-import Image from "next/image";
-import { ReactFlowInstance } from "react-flow-renderer";
+import PersonCard from "@/components/family-tree/PersonCard";
+import { Plus, Menu, X, Users, TreePine, AlertTriangle } from "lucide-react";
+import { ReactFlowInstance } from "reactflow";
 
 import type { PersonWithRelationships as FamilyPersonWithRelationships } from "@/types/family";
-
-type PersonWithRelationships = FamilyPersonWithRelationships;
 
 interface PersonFormData {
   firstName: string;
@@ -33,9 +22,9 @@ interface PersonFormData {
   photoPath?: string;
 }
 
-export default function Dashboard() {
+const Dashboard = () => {
   const { data: session } = useSession();
-  const [persons, setPersons] = useState<PersonWithRelationships[]>([]);
+  const [persons, setPersons] = useState<FamilyPersonWithRelationships[]>([]);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
@@ -48,20 +37,15 @@ export default function Dashboard() {
     useState<ReactFlowInstance | null>(null);
 
   useEffect(() => {
-    if (session) {
-      fetchPersons();
-    }
+    if (session) fetchPersons();
   }, [session]);
 
   const fetchPersons = async () => {
     try {
-      const response = await fetch("/api/persons");
-      if (response.ok) {
-        const data = await response.json();
-        setPersons(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch persons:", error);
+      const res = await fetch("/api/persons");
+      if (res.ok) setPersons(await res.json());
+    } catch (e) {
+      console.error("Failed to fetch persons:", e);
     }
   };
 
@@ -85,28 +69,20 @@ export default function Dashboard() {
 
   const handleSavePerson = async (data: PersonFormData) => {
     try {
-      if (editingPerson) {
-        const response = await fetch(`/api/persons/${editingPerson.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        });
-        if (response.ok) {
-          await fetchPersons();
-        }
-      } else {
-        const response = await fetch("/api/persons", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...data, parentId }),
-        });
-        if (response.ok) {
-          await fetchPersons();
-        }
-      }
+      const method = editingPerson ? "PUT" : "POST";
+      const endpoint = editingPerson
+        ? `/api/persons/${editingPerson.id}`
+        : "/api/persons";
+      const body = editingPerson ? data : { ...data, parentId };
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) fetchPersons();
       setIsPersonModalOpen(false);
-    } catch (error) {
-      console.error("Failed to save person:", error);
+    } catch (e) {
+      console.error("Failed to save person:", e);
     }
   };
 
@@ -117,33 +93,28 @@ export default function Dashboard() {
 
   const confirmDelete = async () => {
     if (!personToDelete) return;
-
     try {
-      const response = await fetch(`/api/persons/${personToDelete.id}`, {
+      const res = await fetch(`/api/persons/${personToDelete.id}`, {
         method: "DELETE",
       });
-
-      if (response.ok) {
-        await fetchPersons();
+      if (res.ok) {
+        fetchPersons();
         setIsDeleteConfirmOpen(false);
         setPersonToDelete(null);
       }
-    } catch (error) {
-      console.error("Failed to delete person:", error);
+    } catch (e) {
+      console.error("Failed to delete person:", e);
     }
   };
 
   const focusOnPerson = (person: Person) => {
-    if (reactFlowInstance) {
-      const node = reactFlowInstance.getNodes().find((n) => n.id === person.id);
-      if (node) {
-        reactFlowInstance.fitView({
-          padding: 0.5,
-          duration: 800,
-          minZoom: 1.5,
-          maxZoom: 1.5,
-        });
-      }
+    if (!reactFlowInstance) return;
+    const node = reactFlowInstance.getNodes().find((n) => n.id === person.id);
+    if (node) {
+      reactFlowInstance.setCenter(node.position.x, node.position.y, {
+        zoom: 1.5,
+        duration: 800,
+      });
     }
   };
 
@@ -163,7 +134,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -171,16 +141,14 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900 flex items-center">
-            <Users size={20} className="mr-2 text-blue-600" />
-            Family Members
+            <Users size={20} className="mr-2 text-blue-600" /> Family Members
           </h2>
           <button
             onClick={() => setIsSidebarOpen(false)}
@@ -195,73 +163,24 @@ export default function Dashboard() {
             onClick={() => handleAddPerson()}
             className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2 mb-4"
           >
-            <Plus size={16} />
-            <span>Add Person</span>
+            <Plus size={16} /> <span>Add Person</span>
           </button>
 
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {persons.map((person) => (
-              <div
+              <PersonCard
                 key={person.id}
-                className="flex items-center justify-between p-2 rounded-md hover:bg-gray-100 group"
-              >
-                <div
-                  onClick={() => focusOnPerson(person)}
-                  className="flex items-center space-x-3 flex-1 cursor-pointer"
-                >
-                  {person.photoPath ? (
-                    <div className="relative w-8 h-8">
-                      <Image
-                        src={`/upload/${person.photoPath}`}
-                        alt={person.firstName}
-                        fill
-                        className="rounded-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-medium text-blue-600">
-                        {person.firstName.charAt(0)}
-                        {person.lastName?.charAt(0) || ""}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {person.firstName} {person.lastName}
-                    </p>
-                    {person.birthDate && (
-                      <p className="text-xs text-gray-500">
-                        b. {new Date(person.birthDate).getFullYear()}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => handleViewProfile(person)}
-                    className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                    title="View profile"
-                  >
-                    <User size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeletePerson(person)}
-                    className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                    title="Delete person"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
+                person={person}
+                onClick={() => focusOnPerson(person)}
+                onView={() => handleViewProfile(person)}
+                onDelete={() => handleDeletePerson(person)}
+              />
             ))}
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile Header */}
+      <main className="flex-1 flex flex-col">
         <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white">
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -270,10 +189,9 @@ export default function Dashboard() {
             <Menu size={24} />
           </button>
           <h1 className="text-xl font-semibold text-gray-900">Family Tree</h1>
-          <div className="w-6" /> {/* Spacer for alignment */}
+          <div className="w-6" />
         </div>
 
-        {/* Tree View */}
         <div className="flex-1 relative">
           <FamilyTree
             persons={persons}
@@ -282,11 +200,11 @@ export default function Dashboard() {
             onViewProfile={handleViewProfile}
             onDeletePerson={handleDeletePerson}
             onInit={setReactFlowInstance}
+            onReloadPersons={fetchPersons}
           />
         </div>
-      </div>
+      </main>
 
-      {/* Modals */}
       <PersonModal
         isOpen={isPersonModalOpen}
         onClose={() => setIsPersonModalOpen(false)}
@@ -299,14 +217,9 @@ export default function Dashboard() {
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
         person={viewingPerson}
-        onEdit={() => {
-          if (viewingPerson) {
-            handleEditPerson(viewingPerson);
-          }
-        }}
+        onEdit={() => viewingPerson && handleEditPerson(viewingPerson)}
       />
 
-      {/* Delete Confirmation Modal */}
       {isDeleteConfirmOpen && personToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
@@ -314,13 +227,11 @@ export default function Dashboard() {
               <AlertTriangle className="text-red-500" size={24} />
               <h2 className="text-xl font-semibold">Delete Person</h2>
             </div>
-
             <p className="text-gray-600 mb-6">
               Are you sure you want to delete {personToDelete.firstName}{" "}
               {personToDelete.lastName}? This action cannot be undone and will
               remove all associated relationships.
             </p>
-
             <div className="flex space-x-3">
               <button
                 onClick={confirmDelete}
@@ -343,4 +254,6 @@ export default function Dashboard() {
       )}
     </div>
   );
-}
+};
+
+export default Dashboard;

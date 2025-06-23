@@ -117,7 +117,7 @@ const PersonNode = ({ data }: PersonNodeProps) => {
 
       {/* Top handle (for parent connections) */}
       <Handle
-        id="parent-target"
+        id="child-target"
         type="target"
         position={Position.Top}
         className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
@@ -126,7 +126,7 @@ const PersonNode = ({ data }: PersonNodeProps) => {
 
       {/* Bottom handle (for child connections) */}
       <Handle
-        id="child-source"
+        id="parent-source"
         type="source"
         position={Position.Bottom}
         className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"

@@ -76,9 +76,9 @@ export function generateLayout(
         target: r.personTwoId,
         type: "smoothstep",
         style: { stroke: "#3b82f6", strokeWidth: 2 },
-        sourceHandle: "bottom",
-        targetHandle: "top",
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#3b82f6" },
+        sourceHandle: "parent-source",
+        targetHandle: "child-target",
+        markerEnd: { type: MarkerType.Arrow, color: "#3b82f6" },
       }))
   );
 
@@ -100,7 +100,6 @@ export function generateLayout(
         targetHandle: "married-right",
         type: "smoothstep",
         animated: true,
-        label: "Married",
         style: {
           stroke: "#f59e42",
           strokeWidth: 2,

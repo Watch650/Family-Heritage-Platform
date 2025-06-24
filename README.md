@@ -8,7 +8,7 @@ A modern web application for creating, visualizing, and managing family trees wi
 - **Backend:** Next.js API Routes, Prisma ORM
 - **Database:** PostgreSQL
 - **Authentication:** NextAuth.js
-- **Visualization:** React Flow (planned for Week 2)
+- **Visualization:** React Flow
 
 ## Getting Started
 
@@ -77,7 +77,7 @@ src/
 
 - **User**: Application users with authentication
 - **Person**: Family members with biographical information
-- **Relationship**: Parent-child relationships between persons
+- **Relationship**: Parent-child, Married relationships between people
 
 ### Key Features
 
@@ -85,7 +85,7 @@ src/
 - Person management (CRUD operations)
 - Relationship tracking
 - Biographical information storage
-- Photo upload support (planned)
+- Photo upload support
 
 ## API Endpoints
 
@@ -101,6 +101,7 @@ src/
 - `DELETE /api/persons/[id]` - Delete person
 
 ### Relationships
+- `PUT /api/relationships` - Update person relationship
 - `POST /api/relationships` - Create parent-child relationship
 - `DELETE /api/relationships` - Remove relationship
 

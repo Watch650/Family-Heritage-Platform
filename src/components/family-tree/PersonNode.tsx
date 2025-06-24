@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import { Handle, Position } from "reactflow";
 import { User, Calendar, Heart, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -9,7 +9,6 @@ import { calculateAge, formatDateRange } from "@/utils/dateUtils";
 
 const PersonNode = ({ data }: PersonNodeProps) => {
   const { person, onViewProfile, onDelete } = data;
-
   const age = calculateAge(person.birthDate, person.deathDate);
   const isDeceased = !!person.deathDate;
 
@@ -66,17 +65,8 @@ const PersonNode = ({ data }: PersonNodeProps) => {
                 isDeceased ? "text-gray-500" : "text-gray-700"
               }`}
             >
-              {person.firstName}
+              {person.lastName} {person.firstName}
             </h3>
-            {person.lastName && (
-              <h3
-                className={`font-semibold text-sm leading-tight ${
-                  isDeceased ? "text-gray-700" : "text-gray-900"
-                }`}
-              >
-                {person.lastName}
-              </h3>
-            )}
           </div>
 
           {/* Dates and Age */}
@@ -154,4 +144,4 @@ const PersonNode = ({ data }: PersonNodeProps) => {
   );
 };
 
-export default PersonNode;
+export default memo(PersonNode);

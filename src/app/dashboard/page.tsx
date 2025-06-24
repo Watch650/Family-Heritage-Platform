@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Person } from "@prisma/client";
+import { Plus, Menu, X, Users, TreePine, AlertTriangle } from "lucide-react";
+import { ReactFlowProvider } from "reactflow";
+
 import FamilyTree from "@/components/family-tree/FamilyTree";
 import PersonModal from "@/components/forms/PersonModal";
 import ProfileModal from "@/components/profiles/ProfileModal";
 import PersonCard from "@/components/family-tree/PersonCard";
-import { Plus, Menu, X, Users, TreePine, AlertTriangle } from "lucide-react";
-import { ReactFlowInstance } from "reactflow";
-
+import ShareModal from "@/components/share-tree/ShareModal";
 import type { PersonWithRelationships as FamilyPersonWithRelationships } from "@/types/family";
+import { useShareTree } from "@/hooks/useShareTree";
 
 interface PersonFormData {
   firstName: string;
@@ -33,9 +35,16 @@ const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [personToDelete, setPersonToDelete] = useState<Person | null>(null);
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance | null>(null);
-
+  const {
+    treeRef,
+    isShareModalOpen,
+    openShareModal,
+    closeShareModal,
+    handleDownload,
+    handleCopyLink,
+    reactFlowInstance,
+    setReactFlowInstance,
+  } = useShareTree();
   useEffect(() => {
     if (session) fetchPersons();
   }, [session]);
@@ -109,13 +118,26 @@ const Dashboard = () => {
 
   const focusOnPerson = (person: Person) => {
     if (!reactFlowInstance) return;
+
     const node = reactFlowInstance.getNodes().find((n) => n.id === person.id);
-    if (node) {
-      reactFlowInstance.setCenter(node.position.x, node.position.y, {
-        zoom: 1.5,
+    if (!node) return;
+
+    const pos = node.positionAbsolute ?? node.position;
+    const width = node.width ?? 150;
+    const height = node.height ?? 100;
+
+    const centerX = pos.x + width / 2;
+    const centerY = pos.y + height / 2;
+
+    console.log("Focus center:", { centerX, centerY });
+
+    // Delay ensures view is settled
+    setTimeout(() => {
+      reactFlowInstance.setCenter(centerX, centerY, {
+        zoom: 1.25,
         duration: 800,
       });
-    }
+    }, 100);
   };
 
   if (!session) {
@@ -166,7 +188,7 @@ const Dashboard = () => {
             <Plus size={16} /> <span>Add Person</span>
           </button>
 
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="space-y-2 max-h-100 overflow-y-auto">
             {persons.map((person) => (
               <PersonCard
                 key={person.id}
@@ -177,6 +199,13 @@ const Dashboard = () => {
               />
             ))}
           </div>
+
+          <button
+            onClick={openShareModal}
+            className="w-full bg-purple-600 text-white mt-4 px-4 py-2 rounded-md hover:bg-purple-700 flex items-center justify-center space-x-2"
+          >
+            <span>Share Tree</span>
+          </button>
         </div>
       </aside>
 
@@ -193,15 +222,18 @@ const Dashboard = () => {
         </div>
 
         <div className="flex-1 relative">
-          <FamilyTree
-            persons={persons}
-            onAddPerson={handleAddPerson}
-            onEditPerson={handleEditPerson}
-            onViewProfile={handleViewProfile}
-            onDeletePerson={handleDeletePerson}
-            onInit={setReactFlowInstance}
-            onReloadPersons={fetchPersons}
-          />
+          <ReactFlowProvider>
+            <FamilyTree
+              persons={persons}
+              onAddPerson={handleAddPerson}
+              onEditPerson={handleEditPerson}
+              onViewProfile={handleViewProfile}
+              onDeletePerson={handleDeletePerson}
+              onInit={setReactFlowInstance}
+              onReloadPersons={fetchPersons}
+              treeRef={treeRef}
+            />
+          </ReactFlowProvider>
         </div>
       </main>
 
@@ -218,6 +250,13 @@ const Dashboard = () => {
         onClose={() => setIsProfileModalOpen(false)}
         person={viewingPerson}
         onEdit={() => viewingPerson && handleEditPerson(viewingPerson)}
+      />
+
+      <ShareModal
+        open={isShareModalOpen}
+        onClose={closeShareModal}
+        onDownload={handleDownload}
+        onCopyLink={handleCopyLink}
       />
 
       {isDeleteConfirmOpen && personToDelete && (

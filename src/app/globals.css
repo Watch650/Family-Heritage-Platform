@@ -33,3 +33,12 @@ body {
   border: 2px solid white !important;
   border-radius: 50% !important;
 }
+
+.exporting .react-flow__controls,
+.exporting .react-flow__minimap,
+.exporting .react-flow__panel,
+.exporting .share-button,
+.exporting .toast,
+.exporting .top-bar {
+  display: none !important;
+}

@@ -98,7 +98,7 @@ export function generateLayout(
         target: r.personTwoId,
         sourceHandle: "married-left",
         targetHandle: "married-right",
-        type: "smoothstep",
+        type: "straight",
         animated: true,
         style: {
           stroke: "#f59e42",

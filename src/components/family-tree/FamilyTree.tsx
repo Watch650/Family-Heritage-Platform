@@ -91,7 +91,7 @@ export default function FamilyTree({
 
         const newEdge = {
           ...params,
-          type: "smoothstep",
+          type: "straight",
           animated: true,
           style: {
             stroke: "#f59e42",
@@ -239,12 +239,28 @@ export default function FamilyTree({
     <div className="w-full h-full relative">
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={edges.map((edge) => ({
+          ...edge,
+          style: {
+            ...(edge.style || {}),
+            ...(selectedEdge?.id === edge.id
+              ? {
+                  stroke: "#f43f5e", // rose-500
+                  strokeWidth: 3,
+                  filter: "drop-shadow(0 0 4px #f43f5e)",
+                }
+              : {
+                  filter: "none",
+                }),
+          },
+        }))}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onInit={handleInit}
         onEdgeClick={(_, edge) => setSelectedEdge(edge)}
+        onPaneClick={() => setSelectedEdge(null)}
+        onNodeClick={() => setSelectedEdge(null)}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -262,18 +278,7 @@ export default function FamilyTree({
         {selectedEdge && (
           <Panel
             position="top-center"
-            className="!translate-x-[-50%] !translate-y-[-50%] bg-white border shadow rounded px-2 py-1 z-50"
-            style={{
-              left: `calc(${
-                (nodes.find((n) => n.id === selectedEdge.source)?.position?.x ??
-                  0) +
-                ((nodes.find((n) => n.id === selectedEdge.target)?.position
-                  ?.x ?? 0) -
-                  (nodes.find((n) => n.id === selectedEdge.source)?.position
-                    ?.x ?? 0)) /
-                  2
-              }px)`,
-            }}
+            className="bg-white border shadow rounded px-2 py-1 z-50"
           >
             <button
               className="text-red-600 hover:text-red-800 flex items-center space-x-1"

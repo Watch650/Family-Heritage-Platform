@@ -1,6 +1,7 @@
+import { RefObject } from "react";
+import { ReactFlowInstance } from "reactflow";
 import { Person, Relationship } from "@prisma/client";
 import { z } from "zod";
-import { ReactFlowInstance } from "reactflow";
 
 // ----------------------
 // Zod Schema
@@ -63,12 +64,21 @@ export interface FamilyTreeProps {
   onDeletePerson: (person: Person) => void;
   onInit?: (instance: ReactFlowInstance) => void;
   onReloadPersons?: () => void;
+  treeRef?: RefObject<HTMLDivElement | null>;
 }
 
 // Profile modal (view-only)
 export interface ProfileModalProps {
+  person: Person | null;
   isOpen: boolean;
   onClose: () => void;
-  person: Person | null;
   onEdit: () => void;
+}
+
+// Share modal for exporting family tree (Link, PNG, PDF)
+export interface ShareModalProps {
+  open: boolean;
+  onClose: () => void;
+  onDownload: (type: "png" | "pdf") => void;
+  onCopyLink: () => void;
 }

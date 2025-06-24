@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+} from "react";
 import ReactFlow, {
   Edge,
   addEdge,
@@ -30,7 +36,7 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { generateLayout } from "@/lib/generateLayout";
 import { FamilyTreeProps } from "@/types/family";
 import { loadLayout, saveLayout } from "@/utils/LayoutStorage";
-import PersonNode from "./PersonNode";
+import PersonNode from "@/components/family-tree/PersonNode";
 
 const nodeTypes = { person: PersonNode };
 
@@ -42,6 +48,7 @@ export default function FamilyTree({
   onDeletePerson,
   onInit,
   onReloadPersons,
+  treeRef,
 }: FamilyTreeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -56,6 +63,7 @@ export default function FamilyTree({
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance | null>(null);
   const isMobile = useResponsive();
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const memoizedLayout = useMemo(() => {
     if (persons.length === 0) return { nodes: [], edges: [] };
@@ -71,7 +79,11 @@ export default function FamilyTree({
   useEffect(() => {
     setNodes(memoizedLayout.nodes);
     setEdges(memoizedLayout.edges);
-  }, [memoizedLayout, setNodes, setEdges]);
+    if (treeRef) {
+      (treeRef as React.RefObject<HTMLDivElement | null>).current =
+        canvasRef.current;
+    }
+  }, [memoizedLayout, setNodes, setEdges, treeRef]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -228,7 +240,7 @@ export default function FamilyTree({
       });
 
       if (onReloadPersons) {
-        onReloadPersons(); // 🔁 refresh relationship data
+        onReloadPersons();
       }
     } catch (err) {
       console.error("Failed to delete relationship:", err);
@@ -237,131 +249,133 @@ export default function FamilyTree({
 
   return (
     <div className="w-full h-full relative">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges.map((edge) => ({
-          ...edge,
-          style: {
-            ...(edge.style || {}),
-            ...(selectedEdge?.id === edge.id
-              ? {
-                  stroke: "#f43f5e", // rose-500
-                  strokeWidth: 3,
-                  filter: "drop-shadow(0 0 4px #f43f5e)",
-                }
-              : {
-                  filter: "none",
-                }),
-          },
-        }))}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onInit={handleInit}
-        onEdgeClick={(_, edge) => setSelectedEdge(edge)}
-        onPaneClick={() => setSelectedEdge(null)}
-        onNodeClick={() => setSelectedEdge(null)}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.1}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background
-          variant={BackgroundVariant.Cross}
-          gap={30}
-          size={4}
-          color="#ccc"
-        />
+      <div ref={canvasRef} className="w-full h-full">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges.map((edge) => ({
+            ...edge,
+            style: {
+              ...(edge.style || {}),
+              ...(selectedEdge?.id === edge.id
+                ? {
+                    stroke: "#f43f5e",
+                    strokeWidth: 3,
+                    filter: "drop-shadow(0 0 4px #f43f5e)",
+                  }
+                : {
+                    filter: "none",
+                  }),
+            },
+          }))}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onInit={handleInit}
+          onEdgeClick={(_, edge) => setSelectedEdge(edge)}
+          onPaneClick={() => setSelectedEdge(null)}
+          onNodeClick={() => setSelectedEdge(null)}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.1}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background
+            variant={BackgroundVariant.Cross}
+            gap={30}
+            size={4}
+            color="#ccc"
+          />
+        </ReactFlow>
+      </div>
 
-        {selectedEdge && (
-          <Panel
-            position="top-center"
-            className="bg-white border shadow rounded px-2 py-1 z-50"
+      {selectedEdge && (
+        <Panel
+          position="top-center"
+          className="bg-white border shadow rounded px-2 py-1 z-50"
+        >
+          <button
+            className="text-red-600 hover:text-red-800 flex items-center space-x-1"
+            onClick={() => {
+              handleEdgeDelete(selectedEdge);
+              setSelectedEdge(null);
+            }}
           >
+            <Trash2 size={16} />
+            <span>Delete</span>
+          </button>
+        </Panel>
+      )}
+
+      {!isMobile && (
+        <>
+          <Controls position="bottom-left" showInteractive={false} />
+          <MiniMap
+            position="bottom-right"
+            nodeColor={(node) =>
+              node.data.person.deathDate ? "#9ca3af" : "#3b82f6"
+            }
+            maskColor="rgb(240, 242, 247, 0.7)"
+            pannable
+            zoomable
+          />
+          <Panel position="top-right">
             <button
-              className="text-red-600 hover:text-red-800 flex items-center space-x-1"
-              onClick={() => {
-                handleEdgeDelete(selectedEdge);
-                setSelectedEdge(null);
-              }}
+              id="save-layout-button"
+              onClick={handleSaveLayout}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
             >
-              <Trash2 size={16} />
-              <span>Delete</span>
+              <Save size={16} />
+              <span>Save Layout</span>
             </button>
           </Panel>
-        )}
+        </>
+      )}
 
-        {!isMobile && (
-          <>
-            <Controls position="bottom-left" showInteractive={false} />
-            <MiniMap
-              position="bottom-right"
-              nodeColor={(node) =>
-                node.data.person.deathDate ? "#9ca3af" : "#3b82f6"
+      {isMobile && (
+        <Panel position="bottom-left">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex space-x-2">
+            <button
+              onClick={() => reactFlowInstance?.zoomOut()}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="Zoom out"
+            >
+              <ZoomOut size={20} />
+            </button>
+            <button
+              onClick={() => reactFlowInstance?.zoomIn()}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="Zoom in"
+            >
+              <ZoomIn size={20} />
+            </button>
+            <button
+              onClick={() => reactFlowInstance?.fitView({ padding: 0.2 })}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="Fit view"
+            >
+              <Maximize size={20} />
+            </button>
+            <button
+              onClick={() =>
+                reactFlowInstance?.setViewport({ x: 0, y: 0, zoom: 1 })
               }
-              maskColor="rgb(240, 242, 247, 0.7)"
-              pannable
-              zoomable
-            />
-            <Panel position="top-right">
-              <button
-                id="save-layout-button"
-                onClick={handleSaveLayout}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-              >
-                <Save size={16} />
-                <span>Save Layout</span>
-              </button>
-            </Panel>
-          </>
-        )}
-
-        {isMobile && (
-          <Panel position="bottom-left">
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 flex space-x-2">
-              <button
-                onClick={() => reactFlowInstance?.zoomOut()}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-                title="Zoom out"
-              >
-                <ZoomOut size={20} />
-              </button>
-              <button
-                onClick={() => reactFlowInstance?.zoomIn()}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-                title="Zoom in"
-              >
-                <ZoomIn size={20} />
-              </button>
-              <button
-                onClick={() => reactFlowInstance?.fitView({ padding: 0.2 })}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-                title="Fit view"
-              >
-                <Maximize size={20} />
-              </button>
-              <button
-                onClick={() =>
-                  reactFlowInstance?.setViewport({ x: 0, y: 0, zoom: 1 })
-                }
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-                title="Reset view"
-              >
-                <RotateCcw size={20} />
-              </button>
-              <button
-                onClick={handleSaveLayout}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-                title="Save layout"
-              >
-                <Save size={20} />
-              </button>
-            </div>
-          </Panel>
-        )}
-      </ReactFlow>
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="Reset view"
+            >
+              <RotateCcw size={20} />
+            </button>
+            <button
+              onClick={handleSaveLayout}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+              title="Save layout"
+            >
+              <Save size={20} />
+            </button>
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }

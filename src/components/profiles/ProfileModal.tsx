@@ -1,16 +1,9 @@
 "use client";
 
 import React from "react";
-import { Person } from "@prisma/client";
 import { X, Calendar, MapPin, FileText, Edit } from "lucide-react";
 import Image from "next/image";
-
-interface ProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  person: Person | null;
-  onEdit: () => void;
-}
+import { ProfileModalProps } from "@/types/family";
 
 export default function ProfileModal({
   isOpen,

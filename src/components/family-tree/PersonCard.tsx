@@ -32,14 +32,14 @@ export function PersonCard({
         ) : (
           <div className="w-8 h-8 bg-blue-100 flex items-center justify-center">
             <span className="text-xs font-medium text-blue-600">
-              {person.firstName.charAt(0)}
               {person.lastName?.charAt(0) || ""}
+              {person.firstName.charAt(0)}
             </span>
           </div>
         )}
         <div>
           <p className="text-sm font-medium text-gray-900">
-            {person.firstName} {person.lastName}
+            {person.lastName} {person.firstName}
           </p>
           {person.birthDate && (
             <p className="text-xs text-gray-500">

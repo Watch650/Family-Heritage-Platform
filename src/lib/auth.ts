@@ -15,7 +15,7 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 5, // 5 hours in seconds (default, overridden dynamically)
+    maxAge: 60 * 60 * 5, // 5 hours
   },
   pages: {
     signIn: "/auth/signin",
@@ -75,6 +75,21 @@ export const authOptions: NextAuthOptions = {
           id: token.id as string,
         },
       };
+    },
+  },
+
+  events: {
+    async createUser({ user }) {
+      try {
+        await prisma.familyTree.create({
+          data: {
+            title: `${user.name ?? "Unnamed"}'s Tree`,
+            createdById: user.id,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to create family tree on signup:", error);
+      }
     },
   },
 };

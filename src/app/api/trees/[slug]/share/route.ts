@@ -2,13 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // POST /api/trees/[slug]/share
-export async function POST(
-  request: Request,
-  { params }: { params: { slug: string } }
-) {
+export async function POST(request: NextRequest, context: unknown) {
+  const { params } = context as { params: { slug: string } };
   const treeId = params.slug;
 
   if (!treeId) {

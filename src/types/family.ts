@@ -1,4 +1,3 @@
-import { RefObject } from "react";
 import { ReactFlowInstance } from "reactflow";
 import { Person, Relationship } from "@prisma/client";
 import { z } from "zod";
@@ -65,7 +64,7 @@ export interface FamilyTreeProps {
   onDeletePerson: (person: Person) => void;
   onInit?: (instance: ReactFlowInstance) => void;
   onReloadPersons?: () => void;
-  treeRef?: RefObject<HTMLDivElement | null>;
+  treeRef?: React.RefObject<HTMLDivElement> | ((instance: HTMLDivElement | null) => void);
 }
 
 // Profile modal (view-only)

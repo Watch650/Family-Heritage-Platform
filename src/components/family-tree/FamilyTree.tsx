@@ -79,9 +79,14 @@ export default function FamilyTree({
   useEffect(() => {
     setNodes(memoizedLayout.nodes);
     setEdges(memoizedLayout.edges);
+
     if (treeRef) {
-      (treeRef as React.RefObject<HTMLDivElement | null>).current =
-        canvasRef.current;
+      if (typeof treeRef === "function") {
+        treeRef(canvasRef.current);
+      } else if ("current" in treeRef) {
+        (treeRef as React.MutableRefObject<HTMLDivElement | null>).current =
+          canvasRef.current;
+      }
     }
   }, [memoizedLayout, setNodes, setEdges, treeRef]);
 

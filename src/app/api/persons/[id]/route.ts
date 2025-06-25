@@ -6,9 +6,9 @@ import { mapPersonData } from "@/lib/mapPersonData";
 // PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const id = context.params.id;
+  const id = params.id;
 
   const user = await getSessionUser();
   if (!user) {
@@ -23,7 +23,10 @@ export async function PUT(
     });
 
     if (!existingPerson) {
-      return NextResponse.json({ error: "Person not found or unauthorized" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Person not found or unauthorized" },
+        { status: 404 }
+      );
     }
 
     const updateData = mapPersonData(data);
@@ -43,9 +46,9 @@ export async function PUT(
 // DELETE /api/persons/[id]
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const id = context.params.id;
+  const id = params.id;
 
   const user = await getSessionUser();
   if (!user) {

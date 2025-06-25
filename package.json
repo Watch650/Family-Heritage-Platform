@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "npx prisma migrate reset && npm run db:seed"
+    "db:reset": "npx prisma migrate reset && npm run db:seed",
+    "vercel-build": "prisma generate && next build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",

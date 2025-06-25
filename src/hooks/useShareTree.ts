@@ -18,9 +18,13 @@ export function useShareTree() {
       toast.error("Tree layout not ready.");
       return;
     }
-
+    const flowElement = treeRef.current?.querySelector(".react-flow") as HTMLElement;
+    if (!flowElement) {
+      console.error("⚠️ .react-flow element not found");
+      return;
+    }
     try {
-      await downloadAsImageOrPdf(treeRef.current, type, {
+      await downloadAsImageOrPdf(flowElement, type, {
         filename: "family-tree",
         pixelRatio: 2,
         reactFlowInstance,

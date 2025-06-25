@@ -112,6 +112,8 @@ const PersonNode = ({ data }: PersonNodeProps) => {
         position={Position.Top}
         className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
         style={{ top: -8 }}
+        data-handleid="child-target"
+        data-nodeid={person.id}
       />
 
       {/* Bottom handle (for child connections) */}
@@ -121,6 +123,8 @@ const PersonNode = ({ data }: PersonNodeProps) => {
         position={Position.Bottom}
         className="w-4 h-4 bg-blue-500 border-2 border-white hover:bg-blue-600 transition-colors"
         style={{ bottom: -8 }}
+        data-handleid="parent-source"
+        data-nodeid={person.id}
       />
 
       {/* Left Handle for MARRIED source */}
@@ -130,6 +134,8 @@ const PersonNode = ({ data }: PersonNodeProps) => {
         position={Position.Left}
         className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 transition-colors"
         style={{ left: -8 }}
+        data-handleid="married-left"
+        data-nodeid={person.id}
       />
 
       {/* Right Handle for MARRIED target */}
@@ -139,6 +145,8 @@ const PersonNode = ({ data }: PersonNodeProps) => {
         position={Position.Right}
         className="w-3 h-3 bg-orange-500 border-2 border-white hover:bg-orange-600 transition-colors"
         style={{ right: -8 }}
+        data-handleid="married-right"
+        data-nodeid={person.id}
       />
     </div>
   );

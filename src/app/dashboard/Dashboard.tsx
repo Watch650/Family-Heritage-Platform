@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { Person } from "@prisma/client";
 import { Plus, Menu, X, Users, TreePine, AlertTriangle } from "lucide-react";
@@ -26,11 +26,12 @@ interface PersonFormData {
 
 type Props = {
   origin: string;
+  initialPersons: FamilyPersonWithRelationships[];
 };
 
-const Dashboard = ({ origin }: Props) => {
+const Dashboard = ({ origin, initialPersons }: Props) => {
   const { data: session } = useSession();
-  const [persons, setPersons] = useState<FamilyPersonWithRelationships[]>([]);
+  const [persons, setPersons] = useState(initialPersons);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
@@ -50,9 +51,6 @@ const Dashboard = ({ origin }: Props) => {
     reactFlowInstance,
     setReactFlowInstance,
   } = useShareTree(origin);
-  useEffect(() => {
-    if (session) fetchPersons();
-  }, [session]);
 
   const fetchPersons = async () => {
     try {

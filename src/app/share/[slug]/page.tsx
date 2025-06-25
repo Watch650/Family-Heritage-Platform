@@ -3,11 +3,11 @@ import { prisma } from "@/lib/prisma";
 import ShareTreeClient from "./ShareTreeClient";
 import { PersonWithRelationships, SavedLayout } from "@/types/family";
 
-type PageProps = {
+export default async function ShareTreePage({
+  params,
+}: {
   params: { slug: string };
-};
-
-export default async function ShareTreePage({ params }: PageProps) {
+}) {
   const { slug } = params;
 
   if (!slug) return notFound();

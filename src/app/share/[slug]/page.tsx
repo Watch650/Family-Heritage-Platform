@@ -1,3 +1,5 @@
+// src/app/share/[slug]/page.tsx
+
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ShareTreeClient from "./ShareTreeClient";

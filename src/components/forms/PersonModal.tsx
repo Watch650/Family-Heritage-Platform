@@ -52,7 +52,7 @@ export default function PersonModal({
             | "male"
             | "female"
             | "other",
-          notes: person.biography || "",
+          biography: person.biography || "",
         }
       : {},
   });
@@ -73,7 +73,7 @@ export default function PersonModal({
           | "male"
           | "female"
           | "other",
-        notes: person.biography || "",
+        biography: person.biography || "",
       });
     } else if (isOpen && !person) {
       reset({
@@ -82,7 +82,7 @@ export default function PersonModal({
         birthDate: "",
         deathDate: "",
         gender: "",
-        notes: "",
+        biography: "",
       });
     }
   }, [isOpen, person, reset]);
@@ -255,7 +255,7 @@ export default function PersonModal({
               Notes
             </label>
             <textarea
-              {...register("notes")}
+              {...register("biography")}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Add any notes about this person..."

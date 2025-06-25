@@ -20,7 +20,7 @@ interface PersonFormData {
   birthDate?: string;
   deathDate?: string;
   gender?: "male" | "female" | "other" | "";
-  notes?: string;
+  biography?: string;
   photoPath?: string;
 }
 

@@ -12,7 +12,7 @@ export const personSchema = z.object({
   birthDate: z.string().optional(),
   deathDate: z.string().optional(),
   gender: z.enum(["male", "female", "other", ""]).optional(),
-  notes: z.string().optional(),
+  biography: z.string().optional(),
 });
 
 // ----------------------

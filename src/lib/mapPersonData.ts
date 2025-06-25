@@ -12,7 +12,7 @@ export function mapPersonData(data: PersonFormData & { photoPath?: string }) {
     gender: genderValues.includes(gender as typeof genderValues[number])
       ? (gender as "MALE" | "FEMALE" | "OTHER")
       : null,
-    biography: data.notes || null,
+    biography: data.biography || null,
     photoPath: data.photoPath || null,
   };
 }

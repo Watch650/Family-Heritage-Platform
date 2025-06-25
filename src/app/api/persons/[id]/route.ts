@@ -6,7 +6,7 @@ import { mapPersonData } from "@/lib/mapPersonData";
 // PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
-  context: { params: { [key: string]: string } }
+  context: any
 ) {
   const id = context.params.id;
 
@@ -46,7 +46,7 @@ export async function PUT(
 // DELETE /api/persons/[id]
 export async function DELETE(
   request: NextRequest,
-  context: { params: { [key: string]: string } }
+  context: any
 ) {
   const id = context.params.id;
 

@@ -6,9 +6,9 @@ import { mapPersonData } from "@/lib/mapPersonData";
 // PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
+  const id = context.params.id;
 
   const user = await getSessionUser();
   if (!user) {
@@ -46,9 +46,9 @@ export async function PUT(
 // DELETE /api/persons/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const id = params.id;
+  const id = context.params.id;
 
   const user = await getSessionUser();
   if (!user) {

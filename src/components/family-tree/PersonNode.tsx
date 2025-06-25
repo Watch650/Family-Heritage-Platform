@@ -8,7 +8,7 @@ import { PersonNodeProps } from "@/types/family";
 import { calculateAge, formatDateRange } from "@/utils/dateUtils";
 
 const PersonNode = ({ data }: PersonNodeProps) => {
-  const { person, onViewProfile, onDelete } = data;
+  const { person, onViewProfile, onDelete, readOnly } = data;
   const age = calculateAge(person.birthDate, person.deathDate);
   const isDeceased = !!person.deathDate;
 
@@ -95,13 +95,16 @@ const PersonNode = ({ data }: PersonNodeProps) => {
           >
             <User size={14} />
           </button>
-          <button
-            onClick={onDelete}
-            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
-            title="Delete person"
-          >
-            <Trash2 size={14} />
-          </button>
+
+          {!readOnly && (
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+              title="Delete person"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       </div>
 

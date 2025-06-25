@@ -49,7 +49,7 @@ const Dashboard = ({ origin }: Props) => {
     handleCopyLink,
     reactFlowInstance,
     setReactFlowInstance,
-  } = useShareTree();
+  } = useShareTree(origin);
   useEffect(() => {
     if (session) fetchPersons();
   }, [session]);

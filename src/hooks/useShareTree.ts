@@ -1,28 +1,52 @@
-// src/hooks/useShareTree.ts
-
 import { useRef, useState } from "react";
-import { downloadAsImageOrPdf } from "@/utils/familyTreeExportUtils";
 import { toast } from "react-hot-toast";
-import { ReactFlowInstance } from "reactflow";
+import { downloadAsImageOrPdf } from "@/utils/familyTreeExportUtils";
+import type { ReactFlowInstance } from "reactflow";
 
-export function useShareTree() {
+export function useShareTree(origin: string) {
   const treeRef = useRef<HTMLDivElement>(null);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
 
-  const openShareModal = () => setIsShareModalOpen(true);
-  const closeShareModal = () => setIsShareModalOpen(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareSlug, setShareSlug] = useState<string | null>(null);
+
+  const openShareModal = async (treeId: string) => {
+    try {
+      const res = await fetch(`/api/trees/${treeId}/share`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.shareSlug) {
+        toast.error("Failed to generate share link");
+        console.error("Share API error:", data);
+        return;
+      }
+
+      setShareSlug(data.shareSlug);
+      setIsShareModalOpen(true);
+    } catch (error) {
+      toast.error("Error generating share link");
+      console.error("Error calling share API:", error);
+    }
+  };
+
+  const closeShareModal = () => {
+    setIsShareModalOpen(false);
+  };
 
   const handleDownload = async (type: "png" | "pdf") => {
     if (!treeRef.current || !reactFlowInstance) {
       toast.error("Tree layout not ready.");
       return;
     }
-    const flowElement = treeRef.current?.querySelector(".react-flow") as HTMLElement;
+
+    const flowElement = treeRef.current.querySelector(".react-flow") as HTMLElement;
     if (!flowElement) {
       console.error("⚠️ .react-flow element not found");
       return;
     }
+
     try {
       await downloadAsImageOrPdf(flowElement, type, {
         filename: "family-tree",
@@ -38,8 +62,14 @@ export function useShareTree() {
   };
 
   const handleCopyLink = async () => {
+    if (!shareSlug) {
+      toast.error("No share link available");
+      return;
+    }
+
+    const shareUrl = `${origin}/share/${shareSlug}`;
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl);
       toast.success("Link copied to clipboard!");
     } catch (error) {
       console.error("Copy link failed:", error);
@@ -49,12 +79,13 @@ export function useShareTree() {
 
   return {
     treeRef,
+    reactFlowInstance,
+    setReactFlowInstance,
     isShareModalOpen,
+    shareSlug,
     openShareModal,
     closeShareModal,
     handleDownload,
     handleCopyLink,
-    reactFlowInstance,
-    setReactFlowInstance,
   };
 }

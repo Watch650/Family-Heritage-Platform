@@ -9,16 +9,16 @@ export default function ShareModal({
   onClose,
   onDownload,
   onCopyLink,
+  shareUrl,
 }: ShareModalProps) {
   const [showToast, setShowToast] = useState(false);
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2000);
     });
-    onCopyLink();
+    onCopyLink?.();
   };
 
   if (!open) return null;
@@ -26,7 +26,6 @@ export default function ShareModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -72,7 +71,6 @@ export default function ShareModal({
         </div>
       </div>
 
-      {/* Toast Notification */}
       {showToast && (
         <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black text-white text-sm px-4 py-2 rounded shadow-lg z-50">
           Link copied to clipboard!

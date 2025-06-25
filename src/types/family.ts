@@ -52,6 +52,7 @@ export interface PersonNodeProps {
     onAddChild: () => void;
     onViewProfile: () => void;
     onDelete: () => void;
+    readOnly?: boolean;
   };
 }
 
@@ -80,5 +81,31 @@ export interface ShareModalProps {
   open: boolean;
   onClose: () => void;
   onDownload: (type: "png" | "pdf") => void;
-  onCopyLink: () => void;
+  onCopyLink?: () => void;
+  shareUrl: string;
+}
+
+// Read-only shared tree data from backend
+export interface SharedTreeData {
+  title: string;
+  persons: PersonWithRelationships[];
+  relationships: Relationship[];
+  layout: SavedLayout;
+}
+
+// Saved layout (backend version of localStorage layout)
+export interface SavedNode {
+  id: string;
+  position: { x: number; y: number };
+}
+
+export interface SavedEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface SavedLayout {
+  nodes: SavedNode[];
+  edges: SavedEdge[];
 }

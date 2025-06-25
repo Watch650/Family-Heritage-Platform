@@ -3,16 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { mapPersonData } from "@/lib/mapPersonData";
 
-interface RouteContext {
-  params: {
-    id: string;
-  };
-}
-
 // PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
-  context: RouteContext
+  context: { params: { [key: string]: string } }
 ) {
   const id = context.params.id;
 
@@ -52,7 +46,7 @@ export async function PUT(
 // DELETE /api/persons/[id]
 export async function DELETE(
   request: NextRequest,
-  context: RouteContext
+  context: { params: { [key: string]: string } }
 ) {
   const id = context.params.id;
 

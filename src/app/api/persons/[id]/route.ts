@@ -4,9 +4,12 @@ import { getSessionUser } from "@/lib/getSessionUser";
 import { mapPersonData } from "@/lib/mapPersonData";
 
 interface RouteContext {
-  params: { id: string };
+  params: {
+    id: string;
+  };
 }
 
+// PUT /api/persons/[id]
 export async function PUT(
   request: NextRequest,
   context: RouteContext
@@ -42,8 +45,50 @@ export async function PUT(
     return NextResponse.json(person);
   } catch (error) {
     console.error("[PUT /api/persons/:id]", error);
+    return NextResponse.json({ error: "Failed to update person" }, { status: 500 });
+  }
+}
+
+// DELETE /api/persons/[id]
+export async function DELETE(
+  request: NextRequest,
+  context: RouteContext
+) {
+  const id = context.params.id;
+
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const existingPerson = await prisma.person.findFirst({
+      where: {
+        id,
+        createdById: user.id,
+      },
+    });
+
+    if (!existingPerson) {
+      return NextResponse.json(
+        { error: "Person not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.relationship.deleteMany({
+      where: {
+        OR: [{ personOneId: id }, { personTwoId: id }],
+      },
+    });
+
+    await prisma.person.delete({ where: { id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[DELETE /api/persons/:id]", error);
     return NextResponse.json(
-      { error: "Failed to update person" },
+      { error: "Failed to delete person" },
       { status: 500 }
     );
   }
